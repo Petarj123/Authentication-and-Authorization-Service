@@ -23,14 +23,6 @@ public class AdminService {
             userRepository.deleteById(userId);
         } else throw new RuntimeException("Something went wrong");
     }
-    @SneakyThrows
-    public List<UserEmailIdDTO> getUsers(String token){
-        if (isAdmin(token)){
-            return userRepository.findAllUserEmailsAndIds();
-        } else {
-            throw new InvalidRoleException("User is not admin");
-        }
-    }
     private boolean isAdmin(String token){
         return !jwtService.isTokenExpired(token) && jwtService.extractRole(token).equals("MANAGER");
     }
