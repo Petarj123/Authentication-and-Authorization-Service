@@ -13,6 +13,4 @@ import java.util.Optional;
 public interface UserRepository extends MongoRepository<User,String> {
     Optional<User> findByEmail(String email);
     Optional<User> findByResetToken(String resetToken);
-    @Query(value = "{}", fields = "{'id': 1, 'email': 1}")
-    List<UserEmailIdDTO> findAllUserEmailsAndIds();
 }

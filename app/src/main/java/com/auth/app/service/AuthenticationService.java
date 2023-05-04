@@ -1,9 +1,6 @@
 package com.auth.app.service;
 
-import com.auth.app.DTO.AuthenticationRequest;
-import com.auth.app.DTO.AuthenticationResponse;
-import com.auth.app.DTO.PasswordRequest;
-import com.auth.app.DTO.RegistrationRequest;
+import com.auth.app.DTO.*;
 import com.auth.app.exceptions.UnavailableEmailException;
 import com.auth.app.exceptions.InvalidEmailException;
 import com.auth.app.exceptions.InvalidPasswordException;
@@ -24,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -107,7 +105,6 @@ public class AuthenticationService {
             throw new UsernameNotFoundException(request.email() + " does not exist");
         }
     }
-
     @SneakyThrows
     public void passwordRecoveryEmail(String email) throws JsonProcessingException {
         Optional<User> existingUser = userRepository.findByEmail(email);
