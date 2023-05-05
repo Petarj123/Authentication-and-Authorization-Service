@@ -1,2 +1,2 @@
-# Chat Application
+# Authentication and Authorization service
  
