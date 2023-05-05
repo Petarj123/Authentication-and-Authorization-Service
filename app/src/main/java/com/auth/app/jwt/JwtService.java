@@ -45,7 +45,7 @@ public class JwtService implements JwtImplementation{
     @Override
     public String generateToken(HashMap<String, Object> extraClaims, UserDetails userDetails) {
         Date now = new Date();
-        Date expirationDate = new Date(now.getTime() + 1000);
+        Date expirationDate = new Date(now.getTime() + 20000);
         if (userDetails instanceof User) {
             extraClaims.put("role", ((User) userDetails).getRole().name());
             extraClaims.put("id", ((User) userDetails).getUserId());
