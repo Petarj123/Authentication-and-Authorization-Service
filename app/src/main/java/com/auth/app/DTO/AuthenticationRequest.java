@@ -1,6 +1,7 @@
 package com.auth.app.DTO;
 
-import lombok.Data;
-
+/**
+ * The type Authentication request.
+ */
 public record AuthenticationRequest(String email, String password) {
 }

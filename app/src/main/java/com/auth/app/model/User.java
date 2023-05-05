@@ -21,6 +21,7 @@ public class User implements UserDetails {
     private Role role;
     private Date createdAt;
     private String resetToken;
+    private String refreshToken;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

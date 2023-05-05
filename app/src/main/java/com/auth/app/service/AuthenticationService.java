@@ -25,6 +25,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * The type Authentication service.
+ */
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
@@ -36,8 +39,15 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final EmailSenderService mailSender;
 
-    @SneakyThrows
-    public void registerUser(RegistrationRequest request) {
+    /**
+     * Registers a new user with the given information and saves their details to the database.
+     *
+     * @param request the registration request containing the user's email and password
+     * @throws UnavailableEmailException if the provided email is already registered with the system
+     * @throws InvalidEmailException     if the provided email is not a valid email address
+     * @throws InvalidPasswordException  if the provided password does not meet the password requirements
+     */
+    public void registerUser(RegistrationRequest request) throws UnavailableEmailException, InvalidEmailException, InvalidPasswordException {
         String emailRegex = "^(.+)@(.+)$";
         String passwordRegex = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#&()–[{}]:;',?/*~$^+=<>]).{8,20}$";
 
@@ -61,8 +71,17 @@ public class AuthenticationService {
         userRepository.save(user);
         mailSender.sendRegistrationEmail(request.email());
     }
-    @SneakyThrows
-    public void registerAdmin(RegistrationRequest request, String token) {
+
+    /**
+     * Registers a new admin with the given information and saves their details to the database.
+     *
+     * @param request the registration request containing the admin's email and password
+     * @param token   the authentication token of the manager who is performing the registration
+     * @throws InvalidPasswordException  if the provided password does not meet the password requirements
+     * @throws InvalidEmailException     if the provided email is not a valid email address
+     * @throws UnavailableEmailException if the provided email is already registered with the system
+     */
+    public void registerAdmin(RegistrationRequest request, String token) throws InvalidPasswordException, InvalidEmailException, UnavailableEmailException {
         String emailRegex = "^(.+)@(.+)$";
         String passwordRegex = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#&()–[{}]:;',?/*~$^+=<>]).{8,20}$";
 
@@ -86,11 +105,24 @@ public class AuthenticationService {
         adminRepository.save(manager);
         mailSender.sendRegistrationEmail(request.email());
     }
+
+    /**
+     * Authenticates a user or admin with the provided email and password, and generates a JWT token if the authentication is successful.
+     *
+     * @param request the authentication request containing the email and password of the user/admin
+     * @return an authentication response containing the JWT token
+     * @throws UsernameNotFoundException if no user or admin with the provided email exists
+     */
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
         if (userRepository.findByEmail(request.email()).isPresent()) {
             var user = userRepository.findByEmail(request.email()).orElseThrow();
             var jwtToken = jwtService.generateToken(user);
+            if (user.getRefreshToken() == null || user.getRefreshToken().isEmpty() || !jwtService.isTokenValid(user.getRefreshToken(), user)){
+                String refreshToken = jwtService.generateRefreshToken(user);
+                user.setRefreshToken(refreshToken);
+                userRepository.save(user);
+            }
             return AuthenticationResponse.builder()
                     .token(jwtToken)
                     .build();
@@ -98,6 +130,11 @@ public class AuthenticationService {
         } else if (adminRepository.findByEmail(request.email()).isPresent()){
             var admin = adminRepository.findByEmail(request.email()).orElseThrow();
             var jwtToken = jwtService.generateToken(admin);
+            if (admin.getRefreshToken() == null || admin.getRefreshToken().isEmpty() || !jwtService.isTokenValid(admin.getRefreshToken(), admin)){
+                String refreshToken = jwtService.generateRefreshToken(admin);
+                admin.setRefreshToken(refreshToken);
+                adminRepository.save(admin);
+            }
             return AuthenticationResponse.builder()
                     .token(jwtToken)
                     .build();
@@ -105,8 +142,15 @@ public class AuthenticationService {
             throw new UsernameNotFoundException(request.email() + " does not exist");
         }
     }
+
+    /**
+     * Sends a password recovery email to the user or admin with the given email address, containing a reset token for their password.
+     *
+     * @param email the email address of the user or admin
+     * @throws UnavailableEmailException if no user or admin with the provided email exists
+     */
     @SneakyThrows
-    public void passwordRecoveryEmail(String email) throws JsonProcessingException {
+    public void passwordRecoveryEmail(String email) {
         Optional<User> existingUser = userRepository.findByEmail(email);
         Optional<Admin> existingAdmin = adminRepository.findByEmail(email);
         ObjectMapper mapper = new ObjectMapper();
@@ -126,6 +170,14 @@ public class AuthenticationService {
 
         } else throw new UnavailableEmailException("Email address does not exist");
     }
+
+    /**
+     * Resets the password of a user or admin with the provided reset token, and saves the new password to the database.
+     *
+     * @param resetToken the reset token for the user or admin's password
+     * @param request    the password request containing the new password and confirmation password
+     * @throws RuntimeException if the new password and confirmation password do not match or do not meet the password requirements, or if the reset token is invalid
+     */
     public void resetPassword(String resetToken, PasswordRequest request) {
         String passwordRegex = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#&()–[{}]:;',?/*~$^+=<>]).{8,20}$";
 
@@ -155,9 +207,22 @@ public class AuthenticationService {
             }
         }
     }
+
+    /**
+     * Generates a new reset token for use in password recovery.
+     *
+     * @return the generated reset token
+     */
     private String generateResetToken(){
         return UUID.randomUUID().toString();
     }
+
+    /**
+     * Checks whether the authenticated user is an admin.
+     *
+     * @param token the JWT token of the authenticated user
+     * @return true if the user is an admin, false otherwise
+     */
     private boolean isAdmin(String token) {
         return jwtService.isTokenExpired(token) && jwtService.extractRole(token).equals("ADMIN");
     }
