@@ -19,7 +19,9 @@ Password Resetting: Users can reset their passwords by using the unique token re
 Technology Stack
 
 Framework: Spring (Java)
+
 Database: MongoDB
+
 Authentication: JSON Web Tokens (JWT)
 
 Usage
