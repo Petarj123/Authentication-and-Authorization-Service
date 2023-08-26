@@ -48,7 +48,7 @@ public class AuthenticationFilter extends OncePerRequestFilter {
                 // JWT token has expired
                 String username = null;
                 try {
-                    username = jwtService.getUsername(token);  // Extract the username even from an expired token.
+                    username = jwtService.getUsername(token);
                 } catch (ExpiredJwtException e) {
                     // Handle the expired token gracefully without throwing an exception.
                 }
@@ -73,7 +73,7 @@ public class AuthenticationFilter extends OncePerRequestFilter {
                                 String newToken = null;
                                 try {
                                     newToken = jwtService.generateToken(username);
-                                } catch (InvalidUsernameException e) { // Assuming you have this exception.
+                                } catch (InvalidUsernameException e) {
                                     throw new RuntimeException(e);
                                 }
 
