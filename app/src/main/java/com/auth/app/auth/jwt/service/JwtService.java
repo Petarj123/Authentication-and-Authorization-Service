@@ -1,10 +1,15 @@
 package com.auth.app.auth.jwt.service;
 
+import com.auth.app.auth.exceptions.InvalidUsernameException;
 import com.auth.app.auth.interfaces.JwtImpl;
+import com.auth.app.auth.user.model.Role;
 import com.auth.app.auth.user.model.SecureUser;
+import com.auth.app.auth.user.model.User;
+import com.auth.app.auth.user.repository.UserRepository;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,14 +24,15 @@ import java.util.List;
 @Service
 public class JwtService implements JwtImpl {
     private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
-
+    private final UserRepository userRepository;
     private final Long expiration;
     private final Key key;
 
     public JwtService(@Value("${jwt.secret}") String secret,
-                      @Value("${jwt.expiration}") Long expiration) {
+                      @Value("${jwt.expiration}") Long expiration, UserRepository userRepository) {
         this.expiration = expiration;
         this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -49,15 +55,50 @@ public class JwtService implements JwtImpl {
                 .signWith(key)
                 .compact();
     }
+    public String generateToken(String username) throws InvalidUsernameException {
+        User user = userRepository.findByUsername(username).orElseThrow(() -> new InvalidUsernameException("User with username " + username + " does not exist."));
+
+        List<String> roles = user.getRoles().stream().map(Role::toString).toList();
+        String email = user.getEmail();
+
+        Date currentDate = new Date();
+        Date expirationDate = new Date(currentDate.getTime() + expiration);
+
+        return Jwts.builder()
+                .setSubject(username)
+                .claim("roles", roles)
+                .claim("email", email)
+                .setIssuedAt(currentDate)
+                .setExpiration(expirationDate)
+                .signWith(key)
+                .compact();
+    }
+
+    @Override
+    public String generateRefreshToken(String username) {
+        Date currentDate = new Date();
+        Date expirationDate = new Date(currentDate.getTime() + (7 * 24 * 60 * 60 * 1000));  // 7 days in milliseconds
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(currentDate)
+                .setExpiration(expirationDate)
+                .signWith(key)
+                .compact();
+    }
 
     @Override
     public String getUsername(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-        return claims.getSubject();
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            return claims.getSubject();
+        } catch (ExpiredJwtException e) {
+            // Even if the JWT has expired, we still want to extract the username
+            return e.getClaims().getSubject();
+        }
     }
 
     @Override
@@ -88,5 +129,26 @@ public class JwtService implements JwtImpl {
             logger.error("JWT claims string is empty: {}", e.getMessage());
         }
         return false;
+    }
+
+    @Override
+    public boolean validateRefreshToken(String token) {
+        try {
+            Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    public Date extractExpirationDate(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        return claims.getExpiration();
     }
 }

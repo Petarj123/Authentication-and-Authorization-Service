@@ -23,7 +23,7 @@ public class User {
     private String email;
     private String password;
     private Set<Role> roles;
-    private String userFolderPath;
+    private String refreshToken;
     private Date createdAt;
     private boolean isLocked;
 }

@@ -5,6 +5,7 @@ import com.auth.app.auth.DTO.LoginResponse;
 import com.auth.app.auth.exceptions.*;
 import com.auth.app.auth.jwt.service.JwtService;
 import com.auth.app.auth.user.model.Role;
+import com.auth.app.auth.user.model.SecureUser;
 import com.auth.app.auth.user.model.User;
 import com.auth.app.auth.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,8 +35,9 @@ public class AuthService {
 
         Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
                 usernameOrEmail, password));
-
         SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        manageUserRefreshToken(authentication);
 
         return LoginResponse.builder()
                 .token(jwtService.generateToken(authentication))
@@ -72,10 +74,42 @@ public class AuthService {
                 .password(passwordEncoder.encode(password))
                 .roles(new HashSet<>())
                 .createdAt(new Date())
+                .refreshToken(null)
                 .isLocked(false)
                 .build();
         user.setRoles(new HashSet<>(List.of(Role.USER)));
         return user;
     }
+
+    private void manageUserRefreshToken(Authentication authentication) {
+        SecureUser secureUser = (SecureUser) authentication.getPrincipal();
+        User user = userRepository.findByUsername(secureUser.getUsername()).orElseThrow();
+
+        boolean shouldGenerateNewToken = false;
+
+        if (user.getRefreshToken() == null || user.getRefreshToken().isEmpty()) {
+            // No refresh token set
+            shouldGenerateNewToken = true;
+        } else {
+            // Check if the token has expired
+            try {
+                if (!jwtService.validateRefreshToken(user.getRefreshToken())) {
+                    Date refreshTokenExpiry = jwtService.extractExpirationDate(user.getRefreshToken());
+                    if (refreshTokenExpiry.before(new Date())) {
+                        shouldGenerateNewToken = true;  // Refresh token has expired
+                    }
+                }
+            } catch (Exception e) {
+                shouldGenerateNewToken = true;
+            }
+        }
+
+        if (shouldGenerateNewToken) {
+            String newRefreshToken = jwtService.generateRefreshToken(secureUser.getUsername());
+            user.setRefreshToken(newRefreshToken);
+            userRepository.save(user);
+        }
+    }
+
 
 }
