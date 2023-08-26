@@ -32,6 +32,6 @@ The endpoints include:
 
 /api/auth/loginfor user authentication
 
-/api/auth/recovery for requesting a password recovery email
+/api/user/recovery for requesting a password recovery email
 
-/api/auth/reset for password resetting
+/api/user/reset-password for password resetting
