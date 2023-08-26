@@ -30,7 +30,7 @@ The endpoints include:
 
 /api/auth/register for user registration
 
-/api/auth/authenticate for user authentication
+/api/auth/loginfor user authentication
 
 /api/auth/recovery for requesting a password recovery email
 
