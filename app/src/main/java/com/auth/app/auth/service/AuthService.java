@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 @Service
@@ -30,6 +31,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final EmailService emailService;
 
     public LoginResponse login(String usernameOrEmail, String password) {
 
@@ -66,6 +68,8 @@ public class AuthService {
         User user = createUser(username, email, password);
 
         userRepository.save(user);
+
+        emailService.sendRegistrationEmail(user.getEmail(), user.getUsername());
     }
     private User createUser(String username, String email, String password) {
         User user = User.builder()
@@ -75,9 +79,11 @@ public class AuthService {
                 .roles(new HashSet<>())
                 .createdAt(new Date())
                 .refreshToken(null)
+                .resetPasswordToken(null)
                 .isLocked(false)
                 .build();
         user.setRoles(new HashSet<>(List.of(Role.USER)));
+
         return user;
     }
 
@@ -110,6 +116,4 @@ public class AuthService {
             userRepository.save(user);
         }
     }
-
-
 }

@@ -24,6 +24,7 @@ public class User {
     private String password;
     private Set<Role> roles;
     private String refreshToken;
+    private String resetPasswordToken;
     private Date createdAt;
     private boolean isLocked;
 }

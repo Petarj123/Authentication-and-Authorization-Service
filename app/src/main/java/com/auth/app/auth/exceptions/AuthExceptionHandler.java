@@ -21,7 +21,8 @@ public class AuthExceptionHandler {
             UsernameExistsException.class, HttpStatus.CONFLICT,
             InvalidUsernameException.class, HttpStatus.BAD_REQUEST,
             ExpiredJwtException.class, HttpStatus.UNAUTHORIZED,
-            ExpiredRefreshTokenException.class, HttpStatus.UNAUTHORIZED
+            ExpiredRefreshTokenException.class, HttpStatus.UNAUTHORIZED,
+            InvalidResetPasswordTokenException.class, HttpStatus.BAD_REQUEST
     );
     @ExceptionHandler(EmailExistsException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
@@ -80,6 +81,13 @@ public class AuthExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     @ResponseBody
     public ExceptionResponse handleExpiredRefreshTokenException(ExpiredRefreshTokenException ex) {
+        HttpStatus status = exceptionStatusMapping.getOrDefault(ex.getClass(), HttpStatus.INTERNAL_SERVER_ERROR);
+        return buildExceptionResponse(ex.getClass(), ex.getMessage(), status);
+    }
+    @ExceptionHandler(InvalidResetPasswordTokenException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseBody
+    public ExceptionResponse handleInvalidResetPasswordTokenException(InvalidResetPasswordTokenException ex) {
         HttpStatus status = exceptionStatusMapping.getOrDefault(ex.getClass(), HttpStatus.INTERNAL_SERVER_ERROR);
         return buildExceptionResponse(ex.getClass(), ex.getMessage(), status);
     }
